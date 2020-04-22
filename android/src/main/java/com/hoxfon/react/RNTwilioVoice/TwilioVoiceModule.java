@@ -762,7 +762,7 @@ public class TwilioVoiceModule extends ReactContextBaseJavaModule implements Act
     private void setAudioFocus(boolean setFocus) {
         if (audioManager != null) {
             if (setFocus) {
-                savedAudioMode = audioManager.getMode();
+                originalAudioMode = audioManager.getMode();
                 // Request audio focus before making any device switch.
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     AudioAttributes playbackAttributes = new AudioAttributes.Builder()
@@ -796,7 +796,7 @@ public class TwilioVoiceModule extends ReactContextBaseJavaModule implements Act
                  */
                 audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
             } else {
-                audioManager.setMode(savedAudioMode);
+                audioManager.setMode(originalAudioMode);
                 audioManager.abandonAudioFocus(null);
             }
         }
