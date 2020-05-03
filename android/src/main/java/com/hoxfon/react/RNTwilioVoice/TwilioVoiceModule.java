@@ -351,6 +351,7 @@ public class TwilioVoiceModule extends ReactContextBaseJavaModule implements Act
             IntentFilter intentFilter = new IntentFilter();
             intentFilter.addAction(ACTION_INCOMING_CALL);
             intentFilter.addAction(ACTION_MISSED_CALL);
+            intentFilter.addAction(ACTION_CANCEL_CALL);
             LocalBroadcastManager.getInstance(getReactApplicationContext()).registerReceiver(
                     voiceBroadcastReceiver, intentFilter);
             registerActionReceiver();
@@ -505,6 +506,8 @@ public class TwilioVoiceModule extends ReactContextBaseJavaModule implements Act
                 SharedPreferences.Editor sharedPrefEditor = sharedPref.edit();
                 sharedPrefEditor.remove(MISSED_CALLS_GROUP);
                 sharedPrefEditor.commit();
+            } else if(action.equals(ACTION_CANCEL_CALL)) {
+                handleIncomingCallIntent(intent);
             } else {
                 Log.e(TAG, "received broadcast unhandled action " + action);
             }
