@@ -61,6 +61,30 @@ RCT_EXPORT_MODULE()
   [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
+RCT_EXPORT_METHOD(setCallName:(NSString *)name) {
+    
+  NSUUID * callUUID;
+
+  if(self.activeCallInvites.count) {
+    TVOCallInvite *callInvite = [self.activeCallInvites valueForKey:[self.activeCallInvites allKeys][self.activeCallInvites.count-1]];
+    if (callInvite.callSid) {
+        callUUID = callInvite.uuid;
+    }
+  }
+  else if(self.call) {
+    if (self.call.sid) {
+        callUUID = self.call.uuid;
+    }
+  }
+
+  if(callUUID) {
+    CXCallUpdate *callUpdate = [[CXCallUpdate alloc] init];
+    callUpdate.localizedCallerName = name;
+
+    [self.callKitProvider reportCallWithUUID:callUUID updated:callUpdate];
+  }
+}
+
 RCT_EXPORT_METHOD(initWithAccessToken:(NSString *)token) {
   _token = token;
   [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleAppTerminateNotification) name:UIApplicationWillTerminateNotification object:nil];

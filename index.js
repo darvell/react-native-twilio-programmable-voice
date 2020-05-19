@@ -100,6 +100,11 @@ const Twilio = {
             TwilioVoice.unregister()
         }
     },
+    setCallName(name) {
+        if (Platform.OS === IOS) {
+            TwilioVoice.setCallName(name)
+        }
+    },
     addEventListener(type, handler) {
         if (_eventHandlers[type].has(handler)) {
             return
