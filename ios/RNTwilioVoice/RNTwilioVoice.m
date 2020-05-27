@@ -322,6 +322,37 @@ withCompletionHandler:(void (^)(void))completion {
         self.incomingPushCompletionCallback = completion;
     } else {
         /**
+         Please note that if the app is updated but never launched to perform the registration, the mobile client will still receive "cancel" notifications, which could cause the app terminated by iOS if the VoIP push notification is not reported to CallKit as a new incoming call. To workaround and avoid app being terminated on iOS 13, upon receiving a "cancel" notification you can report a dummy incoming call to CallKit and then end it on the next tick:
+         */
+        if ([payload.dictionaryPayload[@"twi_message_type"] isEqualToString:@"twilio.voice.cancel"]) {
+            CXHandle *callHandle = [[CXHandle alloc] initWithType:CXHandleTypeGeneric value:@"alice"];
+
+            CXCallUpdate *callUpdate = [[CXCallUpdate alloc] init];
+            callUpdate.remoteHandle = callHandle;
+            callUpdate.supportsDTMF = YES;
+            callUpdate.supportsHolding = YES;
+            callUpdate.supportsGrouping = NO;
+            callUpdate.supportsUngrouping = NO;
+            callUpdate.hasVideo = NO;
+
+            NSUUID *uuid = [NSUUID UUID];
+
+            [self.callKitProvider reportNewIncomingCallWithUUID:uuid update:callUpdate completion:^(NSError *error) {
+                
+            }];
+
+            dispatch_async(dispatch_get_main_queue(), ^{
+                CXEndCallAction *endCallAction = [[CXEndCallAction alloc] initWithCallUUID:uuid];
+                CXTransaction *transaction = [[CXTransaction alloc] initWithAction:endCallAction];
+
+                [self.callKitCallController requestTransaction:transaction completion:^(NSError *error) {
+                    
+                }];
+            });
+
+            return;
+        }
+        /**
         * The Voice SDK processes the call notification and returns the call invite synchronously. Report the incoming call to
         * CallKit and fulfill the completion before exiting this callback method.
         */
