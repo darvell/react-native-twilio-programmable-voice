@@ -4,6 +4,11 @@
 
 #import "RNTwilioVoice.h"
 #import <React/RCTLog.h>
+#import "UserNotifications/UNNotificationContent.h"
+#import "UserNotifications/UNNotificationRequest.h"
+#import "UserNotifications/UNNotificationServiceExtension.h"
+#import "UserNotifications/UNNotificationTrigger.h"
+#import "UserNotifications/UserNotifications.h"
 
 @import AVFoundation;
 @import PushKit;
@@ -12,7 +17,6 @@
 
 NSString * const kCachedDeviceToken = @"CachedDeviceToken";
 
-@interface UNTimeIntervalNotificationTrigger : UNNotificationTrigger;
 @interface RNTwilioVoice () <PKPushRegistryDelegate, TVONotificationDelegate, TVOCallDelegate, CXProviderDelegate>
 
 @property (nonatomic, strong) PKPushRegistry *voipRegistry;
@@ -145,12 +149,12 @@ RCT_EXPORT_METHOD(sendDigits: (NSString *)digits) {
 RCT_EXPORT_METHOD(unregister) {
   NSLog(@"unregister");
   NSString *accessToken = [self fetchAccessToken];
-  NSString *cachedDeviceToken = [[NSUserDefaults standardUserDefaults] objectForKey:kCachedDeviceToken];
-  if ([cachedDeviceToken length] > 0) {
+  NSData *cachedDeviceToken = [[NSUserDefaults standardUserDefaults] objectForKey:kCachedDeviceToken];
+  if (cachedDeviceToken) {
       /* Clear the device token when unregistering. */
       [[NSUserDefaults standardUserDefaults] removeObjectForKey:kCachedDeviceToken];
       [TwilioVoice unregisterWithAccessToken:accessToken
-                                 deviceToken:cachedDeviceToken
+                                 deviceTokenData:cachedDeviceToken
                                   completion:^(NSError * _Nullable error) {
                                     if (error) {
                                         /* Undo token clear on failure */
@@ -225,21 +229,21 @@ RCT_REMAP_METHOD(getCallInvite,
   }
 }
 
-- (void)sendLocalNotification:(NSDictionary *)notification {
-    let content = UNMutableNotificationContent()
-    content.title = notification.title
-    content.body = notification.body
-    let trigger = UNTimeIntervalNotificationTrigger* trigger = [UNTimeIntervalNotificationTrigger
-    triggerWithTimeInterval:(1) repeats: NO];
-    let uuidString = UUID().uuidString
-    let request = UNNotificationRequest(identifier: uuidString,
-                content: content, trigger: trigger)
-    let notificationCenter = UNUserNotificationCenter.current()
-    notificationCenter.add(request) { (error) in
-       if error != nil {
-          // Handle any errors.
-       }
-    }
+- (void)sendLocalNotification: (NSDictionary *)notification {
+    UNMutableNotificationContent* content = [[UNMutableNotificationContent alloc] init];
+    content.title = [NSString localizedUserNotificationStringForKey:[notification objectForKey:@"title"] arguments:nil];
+    content.body = [NSString localizedUserNotificationStringForKey:[notification objectForKey:@"body"]
+    arguments:nil];
+    UNTimeIntervalNotificationTrigger* trigger = [UNTimeIntervalNotificationTrigger
+    triggerWithTimeInterval:1 repeats:NO];
+    NSUUID *uuid = [NSUUID UUID];
+    NSString *uuidString = [uuid UUIDString];
+    UNNotificationRequest* request = [UNNotificationRequest requestWithIdentifier: uuidString
+                                                                          content: content trigger: trigger];
+    UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+    [center addNotificationRequest:request withCompletionHandler:^(NSError * _Nullable error) {
+        NSLog(@"Notification created");
+    }];
 }
 
 #pragma mark - PKPushRegistryDelegate
@@ -247,21 +251,11 @@ RCT_REMAP_METHOD(getCallInvite,
   NSLog(@"pushRegistry:didUpdatePushCredentials:forType");
 
   if ([type isEqualToString:PKPushTypeVoIP]) {
-    const unsigned *tokenBytes = [credentials.token bytes];
-    NSString *deviceTokenString = [NSString stringWithFormat:@"<%08x %08x %08x %08x %08x %08x %08x %08x>",
-                                                        ntohl(tokenBytes[0]), ntohl(tokenBytes[1]), ntohl(tokenBytes[2]),
-                                                        ntohl(tokenBytes[3]), ntohl(tokenBytes[4]), ntohl(tokenBytes[5]),
-                                                        ntohl(tokenBytes[6]), ntohl(tokenBytes[7])];
     NSString *accessToken = [self fetchAccessToken];
-    NSString *cachedDeviceToken = [[NSUserDefaults standardUserDefaults] objectForKey:kCachedDeviceToken];
-    if (![cachedDeviceToken isEqualToString:deviceTokenString]) {
-        cachedDeviceToken = deviceTokenString;
-
-        /*
-         * Perform registration if a new device token is detected.
-         */
+    NSData *cachedDeviceToken = [[NSUserDefaults standardUserDefaults] objectForKey:kCachedDeviceToken];
+      cachedDeviceToken = credentials.token;
         [TwilioVoice registerWithAccessToken:accessToken
-                                 deviceToken:cachedDeviceToken
+                             deviceTokenData:credentials.token
                                   completion:^(NSError *error) {
              if (error) {
                  NSLog(@"An error occurred while registering: %@", [error localizedDescription]);
@@ -280,7 +274,6 @@ RCT_REMAP_METHOD(getCallInvite,
                  [self sendEventWithName:@"deviceReady" body:nil];
              }
          }];
-    }
   }
 }
 
@@ -290,12 +283,12 @@ RCT_REMAP_METHOD(getCallInvite,
   if ([type isEqualToString:PKPushTypeVoIP]) {
     NSString *accessToken = [self fetchAccessToken];
 
-    NSString *cachedDeviceToken = [[NSUserDefaults standardUserDefaults] objectForKey:kCachedDeviceToken];
-    if ([cachedDeviceToken length] > 0) {
+    NSData *cachedDeviceToken = [[NSUserDefaults standardUserDefaults] objectForKey:kCachedDeviceToken];
+    if (cachedDeviceToken) {
         /* Clear the device token when unregistering. */
         [[NSUserDefaults standardUserDefaults] removeObjectForKey:kCachedDeviceToken];
         [TwilioVoice unregisterWithAccessToken:accessToken
-                                                deviceToken:cachedDeviceToken
+                                                deviceTokenData:cachedDeviceToken
                                                  completion:^(NSError * _Nullable error) {
                                                    if (error) {
                                                      /* Undo token clear on failure */
@@ -452,6 +445,16 @@ withCompletionHandler:(void (^)(void))completion {
             [params setObject:callInvite.to forKey:@"call_to"];
         }
         [self sendEventWithName:@"callInviteCancelled" body:params];
+        [params setObject:@"Missed Call" forKey:@"title"];
+        if (callInvite.from) {
+            NSMutableString *formattedNumber = [NSMutableString stringWithString:callInvite.from];
+            [formattedNumber insertString:@"(" atIndex:2];
+            [formattedNumber insertString:@")" atIndex:6];
+            [formattedNumber insertString:@"-" atIndex:7];
+            [formattedNumber insertString:@"-" atIndex:11];
+            [params setObject:formattedNumber forKey:@"body"];
+        }
+        [self sendLocalNotification:params];
     }
 }
 
@@ -484,6 +487,16 @@ withCompletionHandler:(void (^)(void))completion {
             [params setObject:callInvite.to forKey:@"call_to"];
         }
         [self sendEventWithName:@"callInviteCancelled" body:params];
+        [params setObject:@"Missed Call" forKey:@"title"];
+        if (callInvite.from) {
+            NSMutableString *formattedNumber = [NSMutableString stringWithString:callInvite.from];
+            [formattedNumber insertString:@"(" atIndex:2];
+            [formattedNumber insertString:@")" atIndex:6];
+            [formattedNumber insertString:@"-" atIndex:7];
+            [formattedNumber insertString:@"-" atIndex:11];
+            [params setObject:formattedNumber forKey:@"body"];
+        }
+        [self sendLocalNotification:params];
     }
 }
 
