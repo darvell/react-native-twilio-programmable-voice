@@ -12,6 +12,7 @@
 
 NSString * const kCachedDeviceToken = @"CachedDeviceToken";
 
+@interface UNTimeIntervalNotificationTrigger : UNNotificationTrigger;
 @interface RNTwilioVoice () <PKPushRegistryDelegate, TVONotificationDelegate, TVOCallDelegate, CXProviderDelegate>
 
 @property (nonatomic, strong) PKPushRegistry *voipRegistry;
@@ -222,6 +223,23 @@ RCT_REMAP_METHOD(getCallInvite,
   } else {
     return _token;
   }
+}
+
+- (void)sendLocalNotification:(NSDictionary *)notification {
+    let content = UNMutableNotificationContent()
+    content.title = notification.title
+    content.body = notification.body
+    let trigger = UNTimeIntervalNotificationTrigger* trigger = [UNTimeIntervalNotificationTrigger
+    triggerWithTimeInterval:(1) repeats: NO];
+    let uuidString = UUID().uuidString
+    let request = UNNotificationRequest(identifier: uuidString,
+                content: content, trigger: trigger)
+    let notificationCenter = UNUserNotificationCenter.current()
+    notificationCenter.add(request) { (error) in
+       if error != nil {
+          // Handle any errors.
+       }
+    }
 }
 
 #pragma mark - PKPushRegistryDelegate
