@@ -253,27 +253,29 @@ RCT_REMAP_METHOD(getCallInvite,
   if ([type isEqualToString:PKPushTypeVoIP]) {
     NSString *accessToken = [self fetchAccessToken];
     NSData *cachedDeviceToken = [[NSUserDefaults standardUserDefaults] objectForKey:kCachedDeviceToken];
-      cachedDeviceToken = credentials.token;
-        [TwilioVoice registerWithAccessToken:accessToken
-                             deviceTokenData:credentials.token
-                                  completion:^(NSError *error) {
-             if (error) {
-                 NSLog(@"An error occurred while registering: %@", [error localizedDescription]);
-                 NSMutableDictionary *params = [[NSMutableDictionary alloc] init];
-                 [params setObject:[error localizedDescription] forKey:@"err"];
+      if (![cachedDeviceToken isEqualToData:credentials.token]) {
+          cachedDeviceToken = credentials.token;
+          [TwilioVoice registerWithAccessToken:accessToken
+                               deviceTokenData:credentials.token
+                                    completion:^(NSError *error) {
+               if (error) {
+                   NSLog(@"An error occurred while registering: %@", [error localizedDescription]);
+                   NSMutableDictionary *params = [[NSMutableDictionary alloc] init];
+                   [params setObject:[error localizedDescription] forKey:@"err"];
 
-                 [self sendEventWithName:@"deviceNotReady" body:params];
-             }
-             else {
-                 NSLog(@"Successfully registered for VoIP push notifications.");
+                   [self sendEventWithName:@"deviceNotReady" body:params];
+               }
+               else {
+                   NSLog(@"Successfully registered for VoIP push notifications.");
 
-                 /*
-                  * Save the device token after successfully registered.
-                  */
-                 [[NSUserDefaults standardUserDefaults] setObject:cachedDeviceToken forKey:kCachedDeviceToken];
-                 [self sendEventWithName:@"deviceReady" body:nil];
-             }
-         }];
+                   /*
+                    * Save the device token after successfully registered.
+                    */
+                   [[NSUserDefaults standardUserDefaults] setObject:cachedDeviceToken forKey:kCachedDeviceToken];
+                   [self sendEventWithName:@"deviceReady" body:nil];
+               }
+           }];
+      }
   }
 }
 
@@ -448,10 +450,10 @@ withCompletionHandler:(void (^)(void))completion {
         [params setObject:@"Missed Call" forKey:@"title"];
         if (callInvite.from) {
             NSMutableString *formattedNumber = [NSMutableString stringWithString:callInvite.from];
-            [formattedNumber insertString:@"(" atIndex:2];
-            [formattedNumber insertString:@")" atIndex:6];
-            [formattedNumber insertString:@"-" atIndex:7];
-            [formattedNumber insertString:@"-" atIndex:11];
+            [formattedNumber insertString:@" (" atIndex:2];
+            [formattedNumber insertString:@")" atIndex:7];
+            [formattedNumber insertString:@"-" atIndex:8];
+            [formattedNumber insertString:@"-" atIndex:12];
             [params setObject:formattedNumber forKey:@"body"];
         }
         [self sendLocalNotification:params];
@@ -490,10 +492,10 @@ withCompletionHandler:(void (^)(void))completion {
         [params setObject:@"Missed Call" forKey:@"title"];
         if (callInvite.from) {
             NSMutableString *formattedNumber = [NSMutableString stringWithString:callInvite.from];
-            [formattedNumber insertString:@"(" atIndex:2];
-            [formattedNumber insertString:@")" atIndex:6];
-            [formattedNumber insertString:@"-" atIndex:7];
-            [formattedNumber insertString:@"-" atIndex:11];
+            [formattedNumber insertString:@" (" atIndex:2];
+            [formattedNumber insertString:@")" atIndex:7];
+            [formattedNumber insertString:@"-" atIndex:8];
+            [formattedNumber insertString:@"-" atIndex:12];
             [params setObject:formattedNumber forKey:@"body"];
         }
         [self sendLocalNotification:params];
