@@ -76,36 +76,7 @@ RCT_EXPORT_METHOD(initWithAccessToken:(NSString *)token) {
 }
 
 RCT_EXPORT_METHOD(configureCallKit: (NSDictionary *)params) {
-  if (self.callKitCallController == nil) {
-      /*
-       * The important thing to remember when providing a TVOAudioDevice is that the device must be set
-       * before performing any other actions with the SDK (such as connecting a Call, or accepting an incoming Call).
-       * In this case we've already initialized our own `TVODefaultAudioDevice` instance which we will now set.
-       */
-      self.audioDevice = [TVODefaultAudioDevice audioDevice];
-      TwilioVoice.audioDevice = self.audioDevice;
-
-      self.activeCallInvites = [NSMutableDictionary dictionary];
-      self.activeCalls = [NSMutableDictionary dictionary];
-
-    _settings = [[NSMutableDictionary alloc] initWithDictionary:params];
-    CXProviderConfiguration *configuration = [[CXProviderConfiguration alloc] initWithLocalizedName:params[@"appName"]];
-    configuration.maximumCallGroups = 1;
-    configuration.maximumCallsPerCallGroup = 1;
-    if (_settings[@"imageName"]) {
-      configuration.iconTemplateImageData = UIImagePNGRepresentation([UIImage imageNamed:_settings[@"imageName"]]);
-    }
-    if (_settings[@"ringtoneSound"]) {
-      configuration.ringtoneSound = _settings[@"ringtoneSound"];
-    }
-
-    _callKitProvider = [[CXProvider alloc] initWithConfiguration:configuration];
-    [_callKitProvider setDelegate:self queue:nil];
-
-    NSLog(@"CallKit Initialized");
-
-    self.callKitCallController = [[CXCallController alloc] init];
-  }
+    [self initCallKit:params];
 }
 
 RCT_EXPORT_METHOD(connect: (NSDictionary *)params) {
@@ -212,6 +183,39 @@ RCT_REMAP_METHOD(getCallInvite,
     resolve(params);
 }
 
+- (void)initCallKit:(NSDictionary *)params {
+    if (self.callKitCallController == nil) {
+        /*
+         * The important thing to remember when providing a TVOAudioDevice is that the device must be set
+         * before performing any other actions with the SDK (such as connecting a Call, or accepting an incoming Call).
+         * In this case we've already initialized our own `TVODefaultAudioDevice` instance which we will now set.
+         */
+        self.audioDevice = [TVODefaultAudioDevice audioDevice];
+        TwilioVoice.audioDevice = self.audioDevice;
+
+        self.activeCallInvites = [NSMutableDictionary dictionary];
+        self.activeCalls = [NSMutableDictionary dictionary];
+
+      _settings = [[NSMutableDictionary alloc] initWithDictionary:params];
+      CXProviderConfiguration *configuration = [[CXProviderConfiguration alloc] initWithLocalizedName:params[@"appName"]];
+      configuration.maximumCallGroups = 1;
+      configuration.maximumCallsPerCallGroup = 1;
+      if (_settings[@"imageName"]) {
+        configuration.iconTemplateImageData = UIImagePNGRepresentation([UIImage imageNamed:_settings[@"imageName"]]);
+      }
+      if (_settings[@"ringtoneSound"]) {
+        configuration.ringtoneSound = _settings[@"ringtoneSound"];
+      }
+
+      _callKitProvider = [[CXProvider alloc] initWithConfiguration:configuration];
+      [_callKitProvider setDelegate:self queue:nil];
+
+      NSLog(@"CallKit Initialized");
+
+      self.callKitCallController = [[CXCallController alloc] init];
+    }
+}
+
 - (void)initPushRegistry {
   self.voipRegistry = [[PKPushRegistry alloc] initWithQueue:dispatch_get_main_queue()];
   self.voipRegistry.delegate = self;
@@ -256,7 +260,7 @@ RCT_REMAP_METHOD(getCallInvite,
       if (![cachedDeviceToken isEqualToData:credentials.token]) {
           cachedDeviceToken = credentials.token;
           [TwilioVoice registerWithAccessToken:accessToken
-                               deviceTokenData:credentials.token
+                               deviceTokenData:cachedDeviceToken
                                     completion:^(NSError *error) {
                if (error) {
                    NSLog(@"An error occurred while registering: %@", [error localizedDescription]);
@@ -286,7 +290,7 @@ RCT_REMAP_METHOD(getCallInvite,
     NSString *accessToken = [self fetchAccessToken];
 
     NSData *cachedDeviceToken = [[NSUserDefaults standardUserDefaults] objectForKey:kCachedDeviceToken];
-    if (cachedDeviceToken) {
+    if ([cachedDeviceToken length] > 0) {
         /* Clear the device token when unregistering. */
         [[NSUserDefaults standardUserDefaults] removeObjectForKey:kCachedDeviceToken];
         [TwilioVoice unregisterWithAccessToken:accessToken
@@ -326,58 +330,21 @@ RCT_REMAP_METHOD(getCallInvite,
 didReceiveIncomingPushWithPayload:(PKPushPayload *)payload
              forType:(PKPushType)type
 withCompletionHandler:(void (^)(void))completion {
-    NSLog(@"pushRegistry:didReceiveIncomingPushWithPayload:forType:withCompletionHandler");
-
-    // Save for later when the notification is properly handled.
-    self.incomingPushCompletionCallback = completion;
-
-
     if ([type isEqualToString:PKPushTypeVoIP]) {
         // The Voice SDK will use main queue to invoke `cancelledCallInviteReceived:error` when delegate queue is not passed
         if (![TwilioVoice handleNotification:payload.dictionaryPayload delegate:self delegateQueue: nil]) {
             NSLog(@"This is not a valid Twilio Voice notification.");
         }
-    }
-    if ([[NSProcessInfo processInfo] operatingSystemVersion].majorVersion < 13) {
-        // Save for later when the notification is properly handled.
-        self.incomingPushCompletionCallback = completion;
-    } else {
-        /**
-         Please note that if the app is updated but never launched to perform the registration, the mobile client will still receive "cancel" notifications, which could cause the app terminated by iOS if the VoIP push notification is not reported to CallKit as a new incoming call. To workaround and avoid app being terminated on iOS 13, upon receiving a "cancel" notification you can report a dummy incoming call to CallKit and then end it on the next tick:
-         */
-        if ([payload.dictionaryPayload[@"twi_message_type"] isEqualToString:@"twilio.voice.cancel"]) {
-            CXHandle *callHandle = [[CXHandle alloc] initWithType:CXHandleTypeGeneric value:@"alice"];
-
-            CXCallUpdate *callUpdate = [[CXCallUpdate alloc] init];
-            callUpdate.remoteHandle = callHandle;
-            callUpdate.supportsDTMF = YES;
-            callUpdate.supportsHolding = YES;
-            callUpdate.supportsGrouping = NO;
-            callUpdate.supportsUngrouping = NO;
-            callUpdate.hasVideo = NO;
-
-            NSUUID *uuid = [NSUUID UUID];
-
-            [self.callKitProvider reportNewIncomingCallWithUUID:uuid update:callUpdate completion:^(NSError *error) {
-                
-            }];
-
-            dispatch_async(dispatch_get_main_queue(), ^{
-                CXEndCallAction *endCallAction = [[CXEndCallAction alloc] initWithCallUUID:uuid];
-                CXTransaction *transaction = [[CXTransaction alloc] initWithAction:endCallAction];
-
-                [self.callKitCallController requestTransaction:transaction completion:^(NSError *error) {
-                    
-                }];
-            });
-
-            return;
+        if ([[NSProcessInfo processInfo] operatingSystemVersion].majorVersion < 13) {
+            // Save for later when the notification is properly handled.
+            self.incomingPushCompletionCallback = completion;
+        } else {
+            /**
+            * The Voice SDK processes the call notification and returns the call invite synchronously. Report the incoming call to
+            * CallKit and fulfill the completion before exiting this callback method.
+            */
+            completion();
         }
-        /**
-        * The Voice SDK processes the call notification and returns the call invite synchronously. Report the incoming call to
-        * CallKit and fulfill the completion before exiting this callback method.
-        */
-        completion();
     }
 }
 
@@ -390,11 +357,6 @@ withCompletionHandler:(void (^)(void))completion {
 
 #pragma mark - TVONotificationDelegate
 - (void)callInviteReceived:(TVOCallInvite *)callInvite {
-    /**
-     * Calling `[TwilioVoice handleNotification:delegate:]` will synchronously process your notification payload and
-     * provide you a `TVOCallInvite` object. Report the incoming call to CallKit upon receiving this callback.
-     */
-    NSLog(@"callInviteReceived");
     NSString *from = @"Unknown";
     if (callInvite.from) {
         from = [callInvite.from stringByReplacingOccurrencesOfString:@"client:" withString:@""];
