@@ -28,6 +28,9 @@ import com.twilio.voice.Voice;
 import java.util.Map;
 import java.util.Random;
 
+import org.json.JSONObject;
+import org.json.JSONException;
+
 import static com.hoxfon.react.RNTwilioVoice.TwilioVoiceModule.TAG;
 import static com.hoxfon.react.RNTwilioVoice.TwilioVoiceModule.ACTION_FCM_TOKEN;
 import static com.hoxfon.react.RNTwilioVoice.TwilioVoiceModule.ACTION_INCOMING_CALL;
@@ -36,6 +39,7 @@ import static com.hoxfon.react.RNTwilioVoice.TwilioVoiceModule.INCOMING_CALL_INV
 import static com.hoxfon.react.RNTwilioVoice.TwilioVoiceModule.CANCELLED_CALL_INVITE;
 import static com.hoxfon.react.RNTwilioVoice.TwilioVoiceModule.INCOMING_CALL_NOTIFICATION_ID;
 import com.hoxfon.react.RNTwilioVoice.SoundPoolManager;
+import com.hoxfon.react.RNTwilioVoice.IncomingCallNotificationService;
 
 public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
 
@@ -63,12 +67,28 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
      */
     @Override
     public void onMessageReceived(RemoteMessage remoteMessage) {
+        String titletemp = "";
         if (BuildConfig.DEBUG) {
             Log.d(TAG, "Received onMessageReceived()");
             Log.d(TAG, "Bundle data: " + remoteMessage.getData());
+              try {
+            
+            JSONObject jsonObj = new JSONObject(remoteMessage.getData());
+            
+            String up = jsonObj.getString("twi_params");
+            String[] strings = up.split("=");
+             titletemp = strings[1];
+           
+
+            } catch(JSONException e) {
+                throw new RuntimeException(e);
+            }
+
             Log.d(TAG, "From: " + remoteMessage.getFrom());
         }
+            Log.d(TAG, "Bundle data JSON: " + titletemp);
 
+            final String title = titletemp;
         // Check if message contains a data payload.
         if (remoteMessage.getData().size() > 0) {
             Map<String, String> data = remoteMessage.getData();
@@ -107,7 +127,7 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
                                 if (appImportance != ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND) {
                                     context.startActivity(launchIntent);
                                 }
-                                VoiceFirebaseMessagingService.this.handleIncomingCall((ReactApplicationContext)context, notificationId, callInvite, launchIntent);
+                                VoiceFirebaseMessagingService.this.handleIncomingCall((ReactApplicationContext)context, notificationId, callInvite, launchIntent, title);
                             } else {
                                 // Otherwise wait for construction, then handle the incoming call
                                 mReactInstanceManager.addReactInstanceEventListener(new ReactInstanceManager.ReactInstanceEventListener() {
@@ -118,7 +138,7 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
                                         }
                                         Intent launchIntent = callNotificationManager.getLaunchIntent((ReactApplicationContext)context, notificationId, callInvite, true, appImportance);
                                         context.startActivity(launchIntent);
-                                        VoiceFirebaseMessagingService.this.handleIncomingCall((ReactApplicationContext)context, notificationId, callInvite, launchIntent);
+                                        VoiceFirebaseMessagingService.this.handleIncomingCall((ReactApplicationContext)context, notificationId, callInvite, launchIntent, title);
                                     }
                                 });
                                 if (!mReactInstanceManager.hasStartedCreatingInitialContext()) {
@@ -139,7 +159,7 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
                              ReactContext context = mReactInstanceManager.getCurrentReactContext();
                              VoiceFirebaseMessagingService.this.cancelNotification((ReactApplicationContext)context, cancelledCallInvite);
                              VoiceFirebaseMessagingService.this.sendCancelledCallInviteToActivity(
-                                 cancelledCallInvite);
+                                 cancelledCallInvite, title);
                          }
                      });
                 }
@@ -159,10 +179,11 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
     private void handleIncomingCall(ReactApplicationContext context,
                                     int notificationId,
                                     CallInvite callInvite,
-                                    Intent launchIntent
+                                    Intent launchIntent,
+                                    String title
     ) {
         sendIncomingCallMessageToActivity(context, callInvite, notificationId);
-        showNotification(context, callInvite, notificationId, launchIntent);
+        showNotification(context, callInvite, notificationId, launchIntent, title);
     }
 
     /*
@@ -173,18 +194,23 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
             CallInvite callInvite,
             int notificationId
     ) {
-        Intent intent = new Intent(ACTION_INCOMING_CALL);
+        Intent intent = new Intent(context, IncomingCallNotificationService.class);
+        intent.setAction(ACTION_INCOMING_CALL);
         intent.putExtra(INCOMING_CALL_NOTIFICATION_ID, notificationId);
         intent.putExtra(INCOMING_CALL_INVITE, callInvite);
-        LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+        //startService(intent);
+
+         LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
     }
 
     /*
     * Send the CancelledCallInvite to the VoiceActivity
     */
-    private void sendCancelledCallInviteToActivity(CancelledCallInvite cancelledCallInvite) {
+    private void sendCancelledCallInviteToActivity(CancelledCallInvite cancelledCallInvite, String title) {
         Intent intent = new Intent(ACTION_CANCEL_CALL);
         intent.putExtra(CANCELLED_CALL_INVITE, cancelledCallInvite);
+        intent.putExtra("TITLE", title);
+
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
@@ -195,9 +221,10 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
     private void showNotification(ReactApplicationContext context,
                                   CallInvite callInvite,
                                   int notificationId,
-                                  Intent launchIntent
+                                  Intent launchIntent,
+                                  String title
     ) {
-        callNotificationManager.createIncomingCallNotification(context, callInvite, notificationId, launchIntent);
+        callNotificationManager.createIncomingCallNotification(context, callInvite, notificationId, launchIntent, title);
     }
 
     private void cancelNotification(ReactApplicationContext context, CancelledCallInvite cancelledCallInvite) {
