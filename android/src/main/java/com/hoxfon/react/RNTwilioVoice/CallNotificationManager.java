@@ -48,7 +48,7 @@ import static com.hoxfon.react.RNTwilioVoice.TwilioVoiceModule.CLEAR_MISSED_CALL
 
 public class CallNotificationManager {
 
-    private static final String VOICE_CHANNEL = "default";
+    private static final String VOICE_CHANNEL = "notification-channel-high-importance";
 
     private NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
 
@@ -116,7 +116,9 @@ public class CallNotificationManager {
     public void createIncomingCallNotification(ReactApplicationContext context,
                                                CallInvite callInvite,
                                                int notificationId,
-                                               Intent launchIntent)
+                                               Intent launchIntent,
+                                               String title
+                                               )
     {
         if (BuildConfig.DEBUG) {
             Log.d(TAG, "createIncomingCallNotification intent "+launchIntent.getFlags());
@@ -145,7 +147,7 @@ public class CallNotificationManager {
                         .setCategory(NotificationCompat.CATEGORY_CALL)
                         .setSmallIcon(R.drawable.ic_call_white_24dp)
                         .setContentTitle("Incoming call")
-                        .setContentText(callInvite.getFrom() + " is calling")
+                        .setContentText(title + " is calling")
                         .setOngoing(true)
                         .setAutoCancel(true)
                         .setExtras(extras)
@@ -188,13 +190,16 @@ public class CallNotificationManager {
             return;
         }
         NotificationChannel channel = new NotificationChannel(VOICE_CHANNEL,
-                "Primary Voice Channel", NotificationManager.IMPORTANCE_DEFAULT);
+                "Primary Voice Channel", NotificationManager.IMPORTANCE_HIGH);
+
+        String channelId = Constants.VOICE_CHANNEL_HIGH_IMPORTANCE;
+
         channel.setLightColor(Color.GREEN);
         channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
         notificationManager.createNotificationChannel(channel);
     }
 
-    public void createMissedCallNotification(ReactApplicationContext context, CallInvite callInvite) {
+    public void createMissedCallNotification(ReactApplicationContext context, CallInvite callInvite, String title) {
         SharedPreferences sharedPref = context.getSharedPreferences(PREFERENCE_KEY, Context.MODE_PRIVATE);
         SharedPreferences.Editor sharedPrefEditor = sharedPref.edit();
 
@@ -231,7 +236,7 @@ public class CallNotificationManager {
                         .setCategory(NotificationCompat.CATEGORY_MESSAGE)
                         .setSmallIcon(R.drawable.ic_call_missed_white_24dp)
                         .setContentTitle("Missed call")
-                        .setContentText(callInvite.getFrom() + " called")
+                        .setContentText(title + " called")
                         .setAutoCancel(true)
                         .setShowWhen(true)
                         .setExtras(extras)
@@ -246,7 +251,7 @@ public class CallNotificationManager {
         } else {
             inboxStyle.setBigContentTitle(String.valueOf(missedCalls) + " missed calls");
         }
-        inboxStyle.addLine("from: " +callInvite.getFrom());
+        inboxStyle.addLine("from: " + title);
         sharedPrefEditor.putInt(MISSED_CALLS_GROUP, missedCalls);
         sharedPrefEditor.commit();
 
