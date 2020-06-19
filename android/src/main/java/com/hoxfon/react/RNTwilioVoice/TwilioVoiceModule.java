@@ -54,6 +54,7 @@ import com.twilio.voice.Voice;
 
 import java.util.HashMap;
 import java.util.Map;
+import android.os.Bundle;
 
 import static com.hoxfon.react.RNTwilioVoice.EventManager.EVENT_CONNECTION_DID_CONNECT;
 import static com.hoxfon.react.RNTwilioVoice.EventManager.EVENT_CONNECTION_DID_DISCONNECT;
@@ -464,13 +465,19 @@ public class TwilioVoiceModule extends ReactContextBaseJavaModule implements Act
                 // Log.d(TAG, "activeCallInvite state = " + activeCallInvite.getState());
             }
             if (BuildConfig.DEBUG) {
-                Log.d(TAG, "activeCallInvite was cancelled by " + activeCallInvite.getFrom());
+               
+
+                Log.d(TAG, "activeCallInvite was cancelled by " );
             }
             if (!callAccepted) {
                 if (BuildConfig.DEBUG) {
                     Log.d(TAG, "creating a missed call");
                 }
-                callNotificationManager.createMissedCallNotification(getReactApplicationContext(), activeCallInvite);
+                Bundle b = intent.getExtras();
+                final String title = b.getString("TITLE");
+
+                Log.d(TAG, "activeCallInvite was cancelled by " + title);
+                callNotificationManager.createMissedCallNotification(getReactApplicationContext(), activeCallInvite,title );
                 int appImportance = callNotificationManager.getApplicationImportance(getReactApplicationContext());
                 if (appImportance != RunningAppProcessInfo.IMPORTANCE_BACKGROUND) {
                     WritableMap params = Arguments.createMap();
@@ -478,6 +485,7 @@ public class TwilioVoiceModule extends ReactContextBaseJavaModule implements Act
                     params.putString("call_from", activeCallInvite.getFrom());
                     params.putString("call_to", activeCallInvite.getTo());
                     params.putString("call_state", "DISCONNECTED");
+                    params.putString("title", title);
                     eventManager.sendEvent(EVENT_CONNECTION_DID_DISCONNECT, params);
                 }
             }
