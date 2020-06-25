@@ -39,7 +39,6 @@ import static com.hoxfon.react.RNTwilioVoice.TwilioVoiceModule.INCOMING_CALL_INV
 import static com.hoxfon.react.RNTwilioVoice.TwilioVoiceModule.CANCELLED_CALL_INVITE;
 import static com.hoxfon.react.RNTwilioVoice.TwilioVoiceModule.INCOMING_CALL_NOTIFICATION_ID;
 import com.hoxfon.react.RNTwilioVoice.SoundPoolManager;
-import com.hoxfon.react.RNTwilioVoice.IncomingCallNotificationService;
 
 public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
 
@@ -194,8 +193,7 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
             CallInvite callInvite,
             int notificationId
     ) {
-        Intent intent = new Intent(context, IncomingCallNotificationService.class);
-        intent.setAction(ACTION_INCOMING_CALL);
+        Intent intent = new Intent(ACTION_INCOMING_CALL);
         intent.putExtra(INCOMING_CALL_NOTIFICATION_ID, notificationId);
         intent.putExtra(INCOMING_CALL_INVITE, callInvite);
         //startService(intent);
