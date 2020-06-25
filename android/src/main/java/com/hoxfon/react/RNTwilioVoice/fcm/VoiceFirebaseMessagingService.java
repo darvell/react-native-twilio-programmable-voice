@@ -70,24 +70,22 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
         if (BuildConfig.DEBUG) {
             Log.d(TAG, "Received onMessageReceived()");
             Log.d(TAG, "Bundle data: " + remoteMessage.getData());
-              try {
-            
+
+            Log.d(TAG, "From: " + remoteMessage.getFrom());
+        }
+
+        try {
             JSONObject jsonObj = new JSONObject(remoteMessage.getData());
             
             String up = jsonObj.getString("twi_params");
             String[] strings = up.split("=");
-             titletemp = strings[1];
-           
-
-            } catch(JSONException e) {
-                throw new RuntimeException(e);
-            }
-
-            Log.d(TAG, "From: " + remoteMessage.getFrom());
+            titletemp = strings[1];
+        } catch(JSONException e) {
+            
         }
-            Log.d(TAG, "Bundle data JSON: " + titletemp);
+        Log.d(TAG, "Bundle data JSON: " + titletemp);
 
-            final String title = titletemp;
+        final String title = titletemp;
         // Check if message contains a data payload.
         if (remoteMessage.getData().size() > 0) {
             Map<String, String> data = remoteMessage.getData();
