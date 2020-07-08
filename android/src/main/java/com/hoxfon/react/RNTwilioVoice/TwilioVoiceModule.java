@@ -556,8 +556,9 @@ public class TwilioVoiceModule extends ReactContextBaseJavaModule implements Act
         }
 
         if(!checkPermissionForMicrophone()) {
-            promise.reject(new AssertionException("Allow microphone permission"));
-            return;
+            Log.d(TAG, "Please get microphone permission.");
+            //promise.reject(new AssertionException("Allow microphone permission"));
+            //return;
         }
 
         TwilioVoiceModule.this.accessToken = accessToken;
