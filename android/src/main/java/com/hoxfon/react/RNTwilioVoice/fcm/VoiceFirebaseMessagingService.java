@@ -6,6 +6,7 @@ import android.os.Handler;
 import android.os.Looper;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.util.Log;
 
@@ -73,7 +74,7 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
             // If notification ID is not provided by the user for push notification, generate one at random
             Random randomNumberGenerator = new Random(System.currentTimeMillis());
             final int notificationId = randomNumberGenerator.nextInt();
-            boolean valid = Voice.handleMessage(data, new MessageListener() {
+            boolean valid = Voice.handleMessage(getApplicationContext(), data, new MessageListener() {
 
                 @Override
                 public void onCallInvite(@NonNull CallInvite callInvite) {
@@ -137,7 +138,10 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
                 }
 
                 @Override
-                public void onCancelledCallInvite(@NonNull CancelledCallInvite cancelledCallInvite) {
+                public void onCancelledCallInvite(@NonNull CancelledCallInvite cancelledCallInvite, @Nullable CallException callException) {
+                    if(callException != null) {
+                        Log.e(TAG, callException.getMessage());
+                    }
                     Handler handler = new Handler(Looper.getMainLooper());
                     handler.post(new Runnable() {
                         public void run() {
