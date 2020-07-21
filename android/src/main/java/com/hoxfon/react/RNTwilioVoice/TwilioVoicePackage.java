@@ -14,7 +14,7 @@ public class TwilioVoicePackage implements ReactPackage {
 
     private boolean mShouldAskForPermission;
     public TwilioVoicePackage() {
-        mShouldAskForPermission = true;
+        mShouldAskForPermission = false;
     }
 
     public TwilioVoicePackage(boolean shouldAskForPermissions) {
