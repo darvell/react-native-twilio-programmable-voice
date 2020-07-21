@@ -562,7 +562,7 @@ public class TwilioVoiceModule extends ReactContextBaseJavaModule implements Act
         WritableMap params = Arguments.createMap();
 
         if (accessToken.equals("")) {
-            params.putError("error", new JSApplicationIllegalArgumentException("Invalid access token")
+            params.putError("error", new JSApplicationIllegalArgumentException("Invalid access token"));
             params.putBoolean("initialized", false);
             promise.reject(params);
             return;
