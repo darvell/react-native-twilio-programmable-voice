@@ -251,6 +251,8 @@ public class TwilioVoiceModule extends ReactContextBaseJavaModule implements Act
                 if (call != null) {
                     params.putString("call_sid",   call.getSid());
                     params.putString("call_from",  call.getFrom());
+                    params.putString("call_to", call.getTo());
+                    params.putString("call_state", call.getState().name());
                 }
                 eventManager.sendEvent(EVENT_CALL_STATE_RINGING, params);
             }
@@ -298,6 +300,8 @@ public class TwilioVoiceModule extends ReactContextBaseJavaModule implements Act
                     params.putString("call_sid",   call.getSid());
                     params.putString("call_from", call.getFrom());
                     params.putString("call_to", call.getTo());
+                    params.putString("call_state", call.getState().name());
+
                 }
                 eventManager.sendEvent(EVENT_CONNECTION_IS_RECONNECTING, params);
 
@@ -316,6 +320,8 @@ public class TwilioVoiceModule extends ReactContextBaseJavaModule implements Act
                     params.putString("call_sid",   call.getSid());
                     params.putString("call_from", call.getFrom());
                     params.putString("call_to", call.getTo());
+                    params.putString("call_state", call.getState().name());
+
                 }
                 eventManager.sendEvent(EVENT_CONNECTION_DID_RECONNECT, params);
             }
@@ -482,6 +488,7 @@ public class TwilioVoiceModule extends ReactContextBaseJavaModule implements Act
                     params.putString("call_sid", activeCallInvite.getCallSid());
                     params.putString("call_from", activeCallInvite.getFrom());
                     params.putString("call_to", activeCallInvite.getTo()); // TODO check if needed
+                    params.putString("call_state", call.getState().name());
                     eventManager.sendEvent(EVENT_DEVICE_DID_RECEIVE_INCOMING, params);
                 }
             } else {
@@ -535,6 +542,8 @@ public class TwilioVoiceModule extends ReactContextBaseJavaModule implements Act
                     params.putString("call_sid", cancelledCallInvite.getCallSid());
                     params.putString("call_from", cancelledCallInvite.getFrom());
                     params.putString("call_to", cancelledCallInvite.getTo());
+                    params.putString("call_state", call.getState().name());
+
                 }
                 eventManager.sendEvent(EVENT_CALL_INVITE_CANCELLED, params);
             } else if (action.equals(ACTION_MISSED_CALL)) {
@@ -550,23 +559,34 @@ public class TwilioVoiceModule extends ReactContextBaseJavaModule implements Act
 
     @ReactMethod
     public void initWithAccessToken(final String accessToken, Promise promise) {
-        if (accessToken.equals("")) {
-            promise.reject(new JSApplicationIllegalArgumentException("Invalid access token"));
-            return;
-        }
+        WritableMap params = Arguments.createMap();
 
-        if(!checkPermissionForMicrophone()) {
-            promise.reject(new AssertionException("Allow microphone permission"));
+        if (accessToken.equals("")) {
+            params.putError("error", new JSApplicationIllegalArgumentException("Invalid access token")
+            params.putBoolean("initialized", false);
+            promise.reject(params);
             return;
         }
+        
+
+        boolean microphonePermission = checkPermissionForMicrophone();
+        params.putBoolean("microphonePermission", microphonePermission);
 
         TwilioVoiceModule.this.accessToken = accessToken;
         if (BuildConfig.DEBUG) {
             Log.d(TAG, "initWithAccessToken");
         }
-        registerForCallInvites();
-        WritableMap params = Arguments.createMap();
-        params.putBoolean("initialized", true);
+        try { 
+            registerForCallInvites();
+            params.putBoolean("initialized", true);
+        } catch(Exception ex) {
+            params.putBoolean("initialized", false);
+            params.putError("error", ex);
+            Log.error(TAG, ex);
+            promise.reject(params);
+            return;
+        }
+
         promise.resolve(params);
     }
 
@@ -790,6 +810,8 @@ public class TwilioVoiceModule extends ReactContextBaseJavaModule implements Act
             params.putString("call_sid",   activeCallInvite.getCallSid());
             params.putString("call_from",  activeCallInvite.getFrom());
             params.putString("call_to",    activeCallInvite.getTo());
+            params.putString("call_state", activeCall.getState().name());
+
             promise.resolve(params);
             return;
         }
