@@ -74,7 +74,7 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
             // If notification ID is not provided by the user for push notification, generate one at random
             Random randomNumberGenerator = new Random(System.currentTimeMillis());
             final int notificationId = randomNumberGenerator.nextInt();
-            boolean valid = Voice.handleMessage(getReactApplicationContext(), data, new MessageListener() {
+            boolean valid = Voice.handleMessage(getApplicationContext(), data, new MessageListener() {
 
                 @Override
                 public void onCallInvite(@NonNull CallInvite callInvite) {

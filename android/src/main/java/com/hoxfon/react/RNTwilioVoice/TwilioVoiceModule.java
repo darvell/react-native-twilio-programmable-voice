@@ -542,7 +542,6 @@ public class TwilioVoiceModule extends ReactContextBaseJavaModule implements Act
                     params.putString("call_sid", cancelledCallInvite.getCallSid());
                     params.putString("call_from", cancelledCallInvite.getFrom());
                     params.putString("call_to", cancelledCallInvite.getTo());
-                    params.putString("call_state", call.getState().name());
                 }
                 eventManager.sendEvent(EVENT_CALL_INVITE_CANCELLED, params);
             } else if (action.equals(ACTION_MISSED_CALL)) {
@@ -561,9 +560,9 @@ public class TwilioVoiceModule extends ReactContextBaseJavaModule implements Act
         WritableMap params = Arguments.createMap();
 
         if (accessToken.equals("")) {
-            params.putError("error", new JSApplicationIllegalArgumentException("Invalid access token"));
+            params.putString("error", "Invalid access token");
             params.putBoolean("initialized", false);
-            promise.reject(params);
+            promise.reject(new IllegalArgumentException("accessToken cannot be empty."), params);
             return;
         }
         
@@ -580,9 +579,9 @@ public class TwilioVoiceModule extends ReactContextBaseJavaModule implements Act
             params.putBoolean("initialized", true);
         } catch(Exception ex) {
             params.putBoolean("initialized", false);
-            params.putError("error", ex);
-            Log.error(TAG, ex);
-            promise.reject(params);
+            params.putString("error", ex.getMessage());
+            Log.e(TAG, ex.toString());
+            promise.reject(ex, params);
             return;
         }
 
