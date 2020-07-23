@@ -257,31 +257,34 @@ RCT_REMAP_METHOD(getCallInvite,
   if ([type isEqualToString:PKPushTypeVoIP]) {
     NSString *accessToken = [self fetchAccessToken];
     NSData *cachedDeviceToken = [[NSUserDefaults standardUserDefaults] objectForKey:kCachedDeviceToken];
+      
       if (![cachedDeviceToken isEqualToData:credentials.token]) {
           cachedDeviceToken = credentials.token;
-          [TwilioVoice registerWithAccessToken:accessToken
-                               deviceTokenData:cachedDeviceToken
-                                    completion:^(NSError *error) {
-               if (error) {
-                   NSLog(@"An error occurred while registering: %@", [error localizedDescription]);
-                   NSMutableDictionary *params = [[NSMutableDictionary alloc] init];
-                   [params setObject:[error localizedDescription] forKey:@"err"];
-
-                   [self sendEventWithName:@"deviceNotReady" body:params];
-               }
-               else {
-                   NSLog(@"Successfully registered for VoIP push notifications.");
-
-                   /*
-                    * Save the device token after successfully registered.
-                    */
-                   [[NSUserDefaults standardUserDefaults] setObject:cachedDeviceToken forKey:kCachedDeviceToken];
-                   [self sendEventWithName:@"deviceReady" body:nil];
-               }
-           }];
       }
-  }
+      
+      [TwilioVoice registerWithAccessToken:accessToken
+                           deviceTokenData:cachedDeviceToken
+                                completion:^(NSError *error) {
+           if (error) {
+               NSLog(@"An error occurred while registering: %@", [error localizedDescription]);
+               NSMutableDictionary *params = [[NSMutableDictionary alloc] init];
+               [params setObject:[error localizedDescription] forKey:@"err"];
+
+               [self sendEventWithName:@"deviceNotReady" body:params];
+           }
+           else {
+               NSLog(@"Successfully registered for VoIP push notifications.");
+
+               /*
+                * Save the device token after successfully registered.
+                */
+               [[NSUserDefaults standardUserDefaults] setObject:cachedDeviceToken forKey:kCachedDeviceToken];
+               [self sendEventWithName:@"deviceReady" body:nil];
+           }
+       }];
+    }
 }
+
 
 - (void)pushRegistry:(PKPushRegistry *)registry didInvalidatePushTokenForType:(PKPushType)type {
   NSLog(@"pushRegistry:didInvalidatePushTokenForType");
