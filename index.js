@@ -1,3 +1,5 @@
+//https://twilio.github.io/twilio-voice-ios/docs/latest/index.html
+//https://twilio.github.io/twilio-voice-android/docs/5.3.0/
 import {
     NativeModules,
     NativeEventEmitter,
@@ -21,8 +23,7 @@ const _eventHandlers = {
     connectionDidDisconnect: new Map(),
     callStateRinging: new Map(),
     callInviteCancelled: new Map(),
-    callRejected: new Map(),
-    incomingCallCancelled: new Map(),
+    callRejected: new Map()
 }
 
 const Twilio = {

@@ -20,7 +20,6 @@ public class EventManager {
     public static final String EVENT_DEVICE_NOT_READY = "deviceNotReady";
     public static final String EVENT_CONNECTION_DID_CONNECT = "connectionDidConnect";
     public static final String EVENT_CONNECTION_DID_DISCONNECT = "connectionDidDisconnect";
-    public static final String EVENT_INCOMING_CALL_CANCELLED = "incomingCallCancelled";
     public static final String EVENT_DEVICE_DID_RECEIVE_INCOMING = "deviceDidReceiveIncoming";
     public static final String EVENT_CALL_STATE_RINGING = "callStateRinging";
     public static final String EVENT_CALL_INVITE_CANCELLED = "callInviteCancelled";

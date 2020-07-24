@@ -382,8 +382,6 @@ withCompletionHandler:(void (^)(void))completion {
       [params setObject:callInvite.to forKey:@"call_to"];
     }
 
-     [params setObject:"PENDING" forKey:@"call_state"];
-
     [self sendEventWithName:@"deviceDidReceiveIncoming" body:params];
 }
 
@@ -422,19 +420,21 @@ withCompletionHandler:(void (^)(void))completion {
          }
          
         [self sendEventWithName:@"callInviteCancelled" body:params];
+        /*
         [params setObject:@"Missed Call" forKey:@"title"];
         if (callInvite.from) {
             NSMutableString *formattedNumber = [NSMutableString stringWithString:callInvite.from];
+            // TODO: Stop assuming it's a phone number.
             [formattedNumber insertString:@" (" atIndex:2];
             [formattedNumber insertString:@")" atIndex:7];
             [formattedNumber insertString:@"-" atIndex:8];
             [formattedNumber insertString:@"-" atIndex:12];
             [params setObject:formattedNumber forKey:@"body"];
         }
-
         if([params valueForKey: @"call_state"] != StateRejected {
           [self sendLocalNotification:params];
-        }) 
+        })
+        */
     }
 }
 
@@ -466,10 +466,20 @@ withCompletionHandler:(void (^)(void))completion {
         if (callInvite.to) {
             [params setObject:callInvite.to forKey:@"call_to"];
         }
+        if (error) {
+            NSString* errMsg = [error localizedDescription];
+            if (error.localizedFailureReason) {
+              errMsg = [error localizedFailureReason];
+            }
+          [params setObject:errMsg forKey:@"error"];
+        }
+        
         [self sendEventWithName:@"callInviteCancelled" body:params];
+        /*
         [params setObject:@"Missed Call" forKey:@"title"];
         if (callInvite.from) {
             NSMutableString *formattedNumber = [NSMutableString stringWithString:callInvite.from];
+            // TODO: Don't format. DRY.
             [formattedNumber insertString:@" (" atIndex:2];
             [formattedNumber insertString:@")" atIndex:7];
             [formattedNumber insertString:@"-" atIndex:8];
@@ -477,6 +487,7 @@ withCompletionHandler:(void (^)(void))completion {
             [params setObject:formattedNumber forKey:@"body"];
         }
         [self sendLocalNotification:params];
+        */
     }
 }
 
@@ -590,7 +601,7 @@ withCompletionHandler:(void (^)(void))completion {
         if (error.localizedFailureReason) {
           errMsg = [error localizedFailureReason];
         }
-        [params setObject:errMsg forKey:@"err"];
+        [params setObject:errMsg forKey:@"error"];
     }
     if (call.sid) {
         [params setObject:call.sid forKey:@"call_sid"];
