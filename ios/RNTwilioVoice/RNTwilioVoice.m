@@ -164,7 +164,7 @@ RCT_REMAP_METHOD(getActiveCall,
 }
 
 RCT_REMAP_METHOD(getCallInvite,
-                 callInvieteResolver:(RCTPromiseResolveBlock)resolve
+                 callInviteResolver:(RCTPromiseResolveBlock)resolve
                  callInviteRejecter:(RCTPromiseRejectBlock)reject) {
     NSMutableDictionary *params = [[NSMutableDictionary alloc] init];
     if (self.activeCallInvites.count) {
@@ -381,6 +381,9 @@ withCompletionHandler:(void (^)(void))completion {
     if (callInvite.to) {
       [params setObject:callInvite.to forKey:@"call_to"];
     }
+
+     [params setObject:"PENDING" forKey:@"call_state"];
+
     [self sendEventWithName:@"deviceDidReceiveIncoming" body:params];
 }
 
@@ -411,6 +414,13 @@ withCompletionHandler:(void (^)(void))completion {
         if (callInvite.to) {
             [params setObject:callInvite.to forKey:@"call_to"];
         }
+
+         if (error.code == TVOErrorCallCancelledError) {
+             [params setObject:StateDisconnected forKey:@"call_state"];
+          } else {
+             [params setObject:StateRejected forKey:@"call_state"];
+         }
+         
         [self sendEventWithName:@"callInviteCancelled" body:params];
         [params setObject:@"Missed Call" forKey:@"title"];
         if (callInvite.from) {
@@ -421,7 +431,10 @@ withCompletionHandler:(void (^)(void))completion {
             [formattedNumber insertString:@"-" atIndex:12];
             [params setObject:formattedNumber forKey:@"body"];
         }
-        [self sendLocalNotification:params];
+
+        if([params valueForKey: @"call_state"] != StateRejected {
+          [self sendLocalNotification:params];
+        }) 
     }
 }
 
@@ -685,8 +698,8 @@ withCompletionHandler:(void (^)(void))completion {
     TVOCall *call = self.activeCalls[action.callUUID.UUIDString];
 
     if (callInvite) {
-        [callInvite reject];
         [self sendEventWithName:@"callRejected" body:@"callRejected"];
+        [callInvite reject];
         [self.activeCallInvites removeObjectForKey:callInvite.uuid.UUIDString];
     } else if (call) {
         [call disconnect];
